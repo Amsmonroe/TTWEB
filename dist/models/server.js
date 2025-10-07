@@ -31,7 +31,7 @@ const sequelize_1 = require("sequelize");
 class Server {
     constructor() {
         this.app = (0, express_1.default)();
-        this.port = process.env.PORT || '3017';
+        this.port = process.env.PORT || '3016';
         // 1. Conectar a la base de datos
         this.connetionBaseDatos();
         // 2. Configurar middlewares
@@ -44,7 +44,16 @@ class Server {
     // Método para configurar middlewares
     midlewares() {
         this.app.use(express_1.default.json());
-        this.app.use((0, cors_1.default)());
+        // ✅ Configuración CORS segura
+        this.app.use((0, cors_1.default)({
+            origin: [
+                'http://localhost:4200',
+                'http://74.179.81.122:4200',
+                'https://midueloapp.com' // dominio del App Service
+            ],
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            credentials: true
+        }));
     }
     // Método para configurar las rutas
     routes() {

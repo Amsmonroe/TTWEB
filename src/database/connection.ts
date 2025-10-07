@@ -16,13 +16,6 @@ import dotenv from 'dotenv';
 // Cargar variables de entorno
 dotenv.config();
 
-// backend/src/database/connection.ts
-import { Sequelize, QueryTypes } from "sequelize";
-import dotenv from 'dotenv';
-
-// Cargar variables de entorno
-dotenv.config();
-
 const sequelize = new Sequelize(
     process.env.DB_NAME || 'miduelo',
     process.env.DB_USER || 'Rodrigo',

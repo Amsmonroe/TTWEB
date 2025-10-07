@@ -39,9 +39,20 @@ class Server {
 
     // Método para configurar middlewares
     private midlewares() {
-        this.app.use(express.json());
-        this.app.use(cors());
+    this.app.use(express.json());
+
+    // ✅ Configuración CORS segura
+    this.app.use(cors({
+        origin: [
+            'http://localhost:4200' ,
+            'http://74.179.81.122:4200',
+            'https://midueloapp.com' // dominio del App Service
+        ],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        credentials: true
+    }));
     }
+
 
     // Método para configurar las rutas
     private routes() {

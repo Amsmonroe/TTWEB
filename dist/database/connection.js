@@ -13,8 +13,6 @@ const dotenv_1 = __importDefault(require("dotenv"));
 // backend/src/database/connection.ts
 // Cargar variables de entorno
 dotenv_1.default.config();
-// Cargar variables de entorno
-dotenv_1.default.config();
 const sequelize = new sequelize_1.Sequelize(process.env.DB_NAME || 'miduelo', process.env.DB_USER || 'Rodrigo', process.env.DB_PASSWORD || '', {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306'),
