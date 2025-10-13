@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     
-    "test": "echo \"No tests configured yet\"",  
+    "test": "echo 'Tests pendientes' && exit 1",  
     "dev": "nodemon dist/index.js",
     "start": "nodemon dist/index.js",
     "typescript": "tsc --watch"
