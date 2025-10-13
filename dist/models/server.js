@@ -51,7 +51,12 @@ class Server {
         this.app.use(express_1.default.json());
         // Configuración CORS para producción
         const allowedOrigins = process.env.NODE_ENV === 'production'
-            ? (((_a = process.env.FRONTEND_URL) === null || _a === void 0 ? void 0 : _a.split(',')) || ['https://www.miduelo.com', 'https://miduelo.com'])
+            ? (((_a = process.env.FRONTEND_URL) === null || _a === void 0 ? void 0 : _a.split(',')) || [
+                'https://www.miduelo.com',
+                'https://miduelo.com',
+                'https://midueloapp.com',
+                'https://www.midueloapp.com'
+            ])
             : ['http://localhost:4200', 'http://localhost:3000'];
         const corsOptions = {
             origin: (origin, callback) => {
