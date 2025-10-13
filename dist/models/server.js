@@ -80,7 +80,7 @@ class Server {
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization']
         };
-        this.app.use((0, cors_1.default)());
+        this.app.use((0, cors_1.default)(corsOptions)); //  CORRECTO
     }
     // Método para configurar las rutas
     routes() {

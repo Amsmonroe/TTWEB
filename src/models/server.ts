@@ -72,7 +72,7 @@ class Server {
         };
 
 
-        this.app.use(cors());
+        this.app.use(cors(corsOptions));  //  CORRECTO
     }
 
     // Método para configurar las rutas
