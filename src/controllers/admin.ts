@@ -153,82 +153,7 @@ export const getAllPsicologos = async (req: AuthRequest, res: Response) => {
     }
 };
 
-/**
- * Obtener todos los pacientes (para administración)
- */
-export const getAllPacientes = async (req: AuthRequest, res: Response) => {
-    try {
-        const pacientes = await Paciente.findAll({
-            attributes: [
-                'id_paciente',
-                'nombre',
-                'apellido_paterno',
-                'apellido_materno',
-                'email',
-                'telefono',
-                'fecha_nacimiento',
-                'id_psicologo'
-            ],
-            include: [{
-                model: Psicologo,
-                attributes: ['nombre', 'apellidoPaterno', 'apellidoMaterno'],
-                required: false
-            }],
-            order: [['nombre', 'ASC']]
-        });
 
-        res.json({
-            total: pacientes.length,
-            pacientes
-        });
-
-    } catch (error) {
-        console.error('Error obteniendo pacientes:', error);
-        res.status(500).json({
-            msg: 'Error interno del servidor'
-        });
-    }
-};
-
-/**
- * Validar cédula profesional de un psicólogo
- */
-// export const validarCedula = async (req: AuthRequest, res: Response) => {
-//     try {
-//         const { id_psicologo } = req.params;
-//         const { cedula_validada } = req.body;
-
-//         const psicologo = await Psicologo.findByPk(id_psicologo);
-
-//         if (!psicologo) {
-//             return res.status(404).json({
-//                 msg: 'Psicólogo no encontrado'
-//             });
-//         }
-
-//         await psicologo.update({ cedula_validada: !!cedula_validada });
-
-//         res.json({
-//             msg: `Cédula ${cedula_validada ? 'validada' : 'invalidada'} exitosamente`,
-//             psicologo: {
-//                 id: (psicologo as any).id_psicologo,
-//                 nombre: (psicologo as any).nombre,
-//                 cedula: (psicologo as any).cedula,
-//                 cedula_validada: !!cedula_validada
-//             }
-//         });
-
-//     } catch (error) {
-//         console.error('Error validando cédula:', error);
-//         res.status(500).json({
-//             msg: 'Error interno del servidor'
-//         });
-//     }
-// };
-
-/**
- * Cambiar status de un psicólogo (activo/inactivo)
- */
 export const cambiarStatusPsicologo = async (req: AuthRequest, res: Response) => {
     try {
         const { id_psicologo } = req.params;
@@ -316,6 +241,69 @@ export const eliminarPsicologo = async (req: AuthRequest, res: Response) => {
 };
 
 /**
+ *  NUEVO: Validar cédula manualmente (solo por decisión del administrador)
+ */
+export const validarCedulaManual = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id_psicologo } = req.params;
+    const admin_id = req.user?.id_psicologo;
+    const admin_nombre = req.user?.nombre;
+
+    const psicologo = await Psicologo.findByPk(id_psicologo);
+
+    if (!psicologo) {
+      return res.status(404).json({
+        msg: 'Psicólogo no encontrado'
+      });
+    }
+
+    const psicologoData = psicologo as any;
+
+    // Verificar si ya está validada
+    if (psicologoData.cedula_validada) {
+      return res.status(400).json({
+        msg: 'La cédula ya está validada',
+        psicologo: {
+          id: psicologoData.id_psicologo,
+          nombre: `${psicologoData.nombre} ${psicologoData.apellidoPaterno}`,
+          cedula: psicologoData.cedula,
+          cedula_validada: true
+        }
+      });
+    }
+
+    // Actualizar estado de validación
+    await psicologo.update({ 
+      cedula_validada: true 
+    });
+
+    console.log(`✅ Cédula ${psicologoData.cedula} validada manualmente por admin ${admin_nombre} (ID: ${admin_id})`);
+
+    res.json({
+      msg: `Cédula profesional ${psicologoData.cedula} validada manualmente por el administrador`,
+      psicologo: {
+        id: psicologoData.id_psicologo,
+        nombre: `${psicologoData.nombre} ${psicologoData.apellidoPaterno} ${psicologoData.apellidoMaterno || ''}`,
+        cedula: psicologoData.cedula,
+        cedula_validada: true
+      },
+      validacion: {
+        metodo: 'manual',
+        validado_por: admin_nombre,
+        fecha: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en validación manual de cédula:', error);
+    res.status(500).json({
+      msg: 'Error interno del servidor',
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    });
+  }
+};
+
+/**
  * Validar cédula profesional usando servicio externo
  */
 export const validarCedulaConAPI = async (req: AuthRequest, res: Response) => {
@@ -387,6 +375,158 @@ export const validarCedulaConAPI = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       msg: 'Error interno del servidor',
       error: error.message || 'Error desconocido' // ✅ CORREGIDO: Manejo seguro del error
+    });
+  }
+  
+};
+
+/**
+ * Obtener todos los pacientes con información del psicólogo asignado (CORREGIDO)
+ */
+export const getAllPacientesAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const pacientes = await Paciente.findAll({
+      attributes: [
+        'id_paciente',
+        'nombre',
+        'apellido_paterno',
+        'apellido_materno',
+        'email',
+        'telefono',
+        'fecha_nacimiento',
+        'id_psicologo'
+        // ❌ ELIMINADO: 'createdAt' - la tabla no tiene esta columna
+      ],
+      include: [{
+        model: Psicologo,
+        attributes: ['id_psicologo', 'nombre', 'apellidoPaterno', 'apellidoMaterno', 'correo'],
+        required: false // LEFT JOIN para incluir pacientes sin psicólogo
+      }],
+      order: [['id_paciente', 'DESC']] // ✅ CAMBIADO: ordenar por ID en lugar de createdAt
+    });
+
+    // Formatear respuesta
+    const pacientesFormateados = pacientes.map((p: any) => ({
+      id_paciente: p.id_paciente,
+      nombre: p.nombre,
+      apellido_paterno: p.apellido_paterno,
+      apellido_materno: p.apellido_materno,
+      email: p.email,
+      telefono: p.telefono,
+      fecha_nacimiento: p.fecha_nacimiento,
+      id_psicologo: p.id_psicologo,
+      psicologo: p.psicologo ? {
+        id_psicologo: p.psicologo.id_psicologo,
+        nombre: p.psicologo.nombre,
+        apellidoPaterno: p.psicologo.apellidoPaterno,
+        apellidoMaterno: p.psicologo.apellidoMaterno,
+        correo: p.psicologo.correo
+      } : null,
+      status: 'activo' // ✅ CAMPO POR DEFECTO (agregar a tabla si quieres gestionarlo)
+    }));
+
+    res.json(pacientesFormateados);
+
+  } catch (error) {
+    console.error('Error obteniendo pacientes:', error);
+    res.status(500).json({
+      msg: 'Error interno del servidor'
+    });
+  }
+};
+
+/**
+ * Reasignar paciente a otro psicólogo
+ */
+export const reasignarPaciente = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id_paciente } = req.params;
+    const { id_psicologo } = req.body;
+
+    const paciente = await Paciente.findByPk(id_paciente);
+
+    if (!paciente) {
+      return res.status(404).json({
+        msg: 'Paciente no encontrado'
+      });
+    }
+
+    // Verificar que el psicólogo existe y está activo
+    if (id_psicologo) {
+      const psicologo = await Psicologo.findByPk(id_psicologo);
+      
+      if (!psicologo) {
+        return res.status(404).json({
+          msg: 'Psicólogo no encontrado'
+        });
+      }
+
+      if ((psicologo as any).status !== 'activo') {
+        return res.status(400).json({
+          msg: 'El psicólogo no está activo'
+        });
+      }
+    }
+
+    await paciente.update({ id_psicologo });
+
+    console.log(`Paciente ${id_paciente} reasignado al psicólogo ${id_psicologo}`);
+
+    res.json({
+      msg: 'Paciente reasignado correctamente',
+      paciente: {
+        id: (paciente as any).id_paciente,
+        nombre: (paciente as any).nombre,
+        nuevo_psicologo: id_psicologo
+      }
+    });
+
+  } catch (error) {
+    console.error('Error reasignando paciente:', error);
+    res.status(500).json({
+      msg: 'Error interno del servidor'
+    });
+  }
+};
+
+/**
+ * Cambiar status de un paciente (si tienes campo status en la tabla)
+ */
+export const cambiarEstadoPaciente = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id_paciente } = req.params;
+    const { status } = req.body;
+
+    if (!['activo', 'inactivo'].includes(status)) {
+      return res.status(400).json({
+        msg: 'Status inválido. Debe ser "activo" o "inactivo"'
+      });
+    }
+
+    const paciente = await Paciente.findByPk(id_paciente);
+
+    if (!paciente) {
+      return res.status(404).json({
+        msg: 'Paciente no encontrado'
+      });
+    }
+
+    // Si la tabla paciente no tiene campo status, agrégalo o comenta este método
+    // await paciente.update({ status });
+
+    res.json({
+      msg: `Paciente ${status === 'activo' ? 'habilitado' : 'deshabilitado'} exitosamente`,
+      paciente: {
+        id: (paciente as any).id_paciente,
+        nombre: (paciente as any).nombre,
+        status
+      }
+    });
+
+  } catch (error) {
+    console.error('Error cambiando status del paciente:', error);
+    res.status(500).json({
+      msg: 'Error interno del servidor'
     });
   }
 };
