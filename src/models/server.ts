@@ -8,6 +8,10 @@ import chatRoutes from '../routes/chat';
 import adminRoutes from '../routes/admin';
 import chatAdminRoutes from '../routes/chat-admin';
 import actividadRoutes from '../routes/actividad';
+import modulosRoutes from '../routes/modulos';
+import testRoutes from '../routes/tests';
+import notasRoutes from '../routes/notas';
+import { setupAssociations } from './associations';
 import { Actividad } from './actividad/actividad';
 import { ActividadAsignada } from './actividad/actividad-asignada';
 import { Psicologo } from './psicologo';
@@ -34,20 +38,16 @@ class Server {
         this.routes();
         // 4. Iniciar el servidor
         this.listen();
+        
     }
-
+    
     // Método para configurar middlewares
     private midlewares() {
         this.app.use(express.json());
 
         // Configuración CORS para producción
         const allowedOrigins = process.env.NODE_ENV === 'production'
-            ? (process.env.FRONTEND_URL?.split(',') || [
-                'https://www.miduelo.com', 
-                'https://miduelo.com',
-                'https://midueloapp.com',      
-                'https://www.midueloapp.com'   
-            ])
+            ? (process.env.FRONTEND_URL?.split(',') || ['https://www.miduelo.com', 'https://miduelo.com'])
             : ['http://localhost:4200', 'http://localhost:3000'];
 
         const corsOptions = {
@@ -72,12 +72,12 @@ class Server {
         };
 
 
-        this.app.use(cors(corsOptions));  //  CORRECTO
+        this.app.use(cors());
     }
 
     // Método para configurar las rutas
     private routes() {
-
+                                      
         this.app.get('/health', async (req: Request, res: Response) => {
             try {
                 await sequelize.authenticate();
@@ -116,6 +116,9 @@ class Server {
         this.app.use(adminRoutes); 
         this.app.use(chatAdminRoutes);
         this.app.use(actividadRoutes);
+        this.app.use(modulosRoutes);
+        this.app.use(testRoutes);
+        this.app.use(notasRoutes);
 
         // Ruta 404 crashea con ña siguiente linea
         // this.app.use('*', (req: Request, res: Response) => {
@@ -153,6 +156,19 @@ class Server {
              //Sincronizar modelos de actividades
             await Actividad.sync({ alter: false });
             await ActividadAsignada.sync({ alter: false });
+
+            //  AGREGAR ESTAS LÍNEAS AQUÍ:
+            // Importar y sincronizar modelos de módulos (si existen)
+            const { Modulo } = await import('./modulo');
+            const { ActividadModulo } = await import('./actividad-modulo');
+            const { Evidencia } = await import('./evidencia');
+            
+            await Modulo.sync({ alter: false });
+            await ActividadModulo.sync({ alter: false });
+            await Evidencia.sync({ alter: false });
+
+            // ✅ CONFIGURAR ASOCIACIONES AQUÍ (DESPUÉS de sync)
+            setupAssociations();
 
             console.log('Conexión a la base de datos exitosa.');
             console.log('Tablas sincronizadas correctamente.');

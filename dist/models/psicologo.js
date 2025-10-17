@@ -13,15 +13,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Psicologo = void 0;
-// backend/src/models/psicologo.ts
 const sequelize_1 = require("sequelize");
 const connection_1 = __importDefault(require("../database/connection"));
 exports.Psicologo = connection_1.default.define("psicologo", {
-    id_psicologo: {
-        type: sequelize_1.DataTypes.INTEGER,
-        allowNull: false,
-        primaryKey: true,
-        autoIncrement: true
+    id_psicologo: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, primaryKey: true,
+        autoIncrement: true // Muy importante para evitar que intente crear "id"
     },
     nombre: { type: sequelize_1.DataTypes.STRING(100), allowNull: false },
     apellidoPaterno: { type: sequelize_1.DataTypes.STRING(100), allowNull: false },
@@ -42,6 +38,7 @@ exports.Psicologo = connection_1.default.define("psicologo", {
     freezeTableName: true,
     hooks: {
         beforeCreate: (psicologo) => __awaiter(void 0, void 0, void 0, function* () {
+            // Genera un código único de 5 caracteres alfanuméricos
             const generarCodigo = () => {
                 const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
                 let result = "";
@@ -51,6 +48,7 @@ exports.Psicologo = connection_1.default.define("psicologo", {
                 return result;
             };
             let codigo = generarCodigo();
+            // Verificar que no exista en la BD
             let existe = yield exports.Psicologo.findOne({ where: { codigo_vinculacion: codigo } });
             while (existe) {
                 codigo = generarCodigo();
