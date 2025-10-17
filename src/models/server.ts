@@ -29,7 +29,7 @@ class Server {
 
     constructor() {
         this.app = express();
-        this.port = process.env.PORT || '3016';
+        this.port = process.env.PORT || '3017';
         // 1. Conectar a la base de datos
         this.connetionBaseDatos();
         // 2. Configurar middlewares
