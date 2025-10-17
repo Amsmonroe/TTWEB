@@ -1,3 +1,5 @@
+// backend/src/models/pregunta_test.ts
+
 import { DataTypes } from "sequelize";
 import db from "../database/connection";
 

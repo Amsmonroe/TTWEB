@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -45,22 +12,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// backend/src/models/server.ts
 const express_1 = __importDefault(require("express"));
-const connection_1 = __importDefault(require("../database/connection"));
 const psicologo_1 = __importDefault(require("../routes/psicologo"));
 const paciente_1 = __importDefault(require("../routes/paciente"));
 const agenda_1 = __importDefault(require("../routes/agenda"));
 const disponibilidad_1 = __importDefault(require("../routes/disponibilidad"));
 const chat_1 = __importDefault(require("../routes/chat"));
 const admin_1 = __importDefault(require("../routes/admin"));
-const chat_admin_1 = __importDefault(require("../routes/chat-admin"));
-const actividad_1 = __importDefault(require("../routes/actividad"));
-const modulos_1 = __importDefault(require("../routes/modulos"));
-const tests_1 = __importDefault(require("../routes/tests"));
-const notas_1 = __importDefault(require("../routes/notas"));
-const associations_1 = require("./associations");
-const actividad_2 = require("./actividad/actividad");
-const actividad_asignada_1 = require("./actividad/actividad-asignada");
 const psicologo_2 = require("./psicologo");
 const paciente_2 = require("./paciente");
 const agenda_2 = require("./agenda/agenda");
@@ -84,90 +43,31 @@ class Server {
     }
     // Método para configurar middlewares
     midlewares() {
-        var _a;
         this.app.use(express_1.default.json());
-        // Configuración CORS para producción
-        const allowedOrigins = process.env.NODE_ENV === 'production'
-            ? (((_a = process.env.FRONTEND_URL) === null || _a === void 0 ? void 0 : _a.split(',')) || ['https://www.miduelo.com', 'https://miduelo.com'])
-            : ['http://localhost:4200', 'http://localhost:3000'];
-        const corsOptions = {
-            origin: (origin, callback) => {
-                // Permitir requests sin origin (como mobile apps o curl requests)
-                if (!origin)
-                    return callback(null, true);
-                if (Array.isArray(allowedOrigins)) {
-                    if (allowedOrigins.includes(origin)) {
-                        callback(null, true);
-                    }
-                    else {
-                        callback(new Error('No permitido por CORS'));
-                    }
-                }
-                else {
-                    // Si es '*', permitir todo
-                    callback(null, true);
-                }
-            },
-            credentials: true,
+        // ✅ Configuración CORS segura
+        this.app.use((0, cors_1.default)({
+            origin: [
+                'http://localhost:4200',
+                'http://74.179.81.122:4200',
+                'https://midueloapp.com' // dominio del App Service
+            ],
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization']
-        };
-        this.app.use((0, cors_1.default)());
+            credentials: true
+        }));
     }
     // Método para configurar las rutas
     routes() {
-        this.app.get('/health', (req, res) => __awaiter(this, void 0, void 0, function* () {
-            try {
-                yield connection_1.default.authenticate();
-                res.status(200).json({
-                    status: 'OK',
-                    timestamp: new Date().toISOString(),
-                    database: 'connected',
-                    environment: process.env.NODE_ENV || 'development'
-                });
-            }
-            catch (error) {
-                res.status(503).json({
-                    status: 'ERROR',
-                    timestamp: new Date().toISOString(),
-                    database: 'disconnected',
-                    error: error instanceof Error ? error.message : 'Unknown error'
-                });
-            }
-        }));
-        this.app.get('/', (req, res) => {
-            res.status(200).json({
-                message: 'API MiDuelo está funcionando',
-                version: '1.0.0',
-                environment: process.env.NODE_ENV || 'development',
-                timestamp: new Date().toISOString()
-            });
-        });
         this.app.use(psicologo_1.default);
         this.app.use(paciente_1.default);
         this.app.use(agenda_1.default);
         this.app.use(disponibilidad_1.default);
         this.app.use(chat_1.default);
         this.app.use(admin_1.default);
-        this.app.use(chat_admin_1.default);
-        this.app.use(actividad_1.default);
-        this.app.use(modulos_1.default);
-        this.app.use(tests_1.default);
-        this.app.use(notas_1.default);
-        // Ruta 404 crashea con ña siguiente linea
-        // this.app.use('*', (req: Request, res: Response) => {
-        //     res.status(404).json({
-        //         message: 'Ruta no encontrada',
-        //         path: req.originalUrl
-        //     });
-        // });
     }
     // Método para iniciar el servidor
     listen() {
         this.app.listen(this.port, () => {
             console.log(`Servidor ejecutándose en el puerto: ${this.port}`);
-            console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`Iniciado: ${new Date().toISOString()}`);
         });
     }
     // Método para conectar a la base de datos
@@ -181,19 +81,6 @@ class Server {
                 yield agenda_2.Agenda.sync({ alter: false });
                 yield cita_1.Cita.sync({ alter: false });
                 yield recordatorio_1.Recordatorio.sync({ alter: false });
-                //Sincronizar modelos de actividades
-                yield actividad_2.Actividad.sync({ alter: false });
-                yield actividad_asignada_1.ActividadAsignada.sync({ alter: false });
-                //  AGREGAR ESTAS LÍNEAS AQUÍ:
-                // Importar y sincronizar modelos de módulos (si existen)
-                const { Modulo } = yield Promise.resolve().then(() => __importStar(require('./modulo')));
-                const { ActividadModulo } = yield Promise.resolve().then(() => __importStar(require('./actividad-modulo')));
-                const { Evidencia } = yield Promise.resolve().then(() => __importStar(require('./evidencia')));
-                yield Modulo.sync({ alter: false });
-                yield ActividadModulo.sync({ alter: false });
-                yield Evidencia.sync({ alter: false });
-                // ✅ CONFIGURAR ASOCIACIONES AQUÍ (DESPUÉS de sync)
-                (0, associations_1.setupAssociations)();
                 console.log('Conexión a la base de datos exitosa.');
                 console.log('Tablas sincronizadas correctamente.');
                 // Programar cron: revisar citas para mañana a las 00:05
