@@ -12,6 +12,7 @@ import actividadRoutes from '../routes/actividad';
 import modulosRoutes from '../routes/modulos';
 import testRoutes from '../routes/tests';
 import notasRoutes from '../routes/notas';
+import foroRoutes from '../routes/foro';
 import { setupAssociations } from './associations';
 import { Actividad } from './actividad/actividad';
 import { ActividadAsignada } from './actividad/actividad-asignada';
@@ -65,7 +66,7 @@ class Server {
                 }
             },
             credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization', 'token']
         };
 
@@ -156,6 +157,7 @@ class Server {
         this.app.use(modulosRoutes);
         this.app.use(testRoutes);
         this.app.use(notasRoutes);
+        this.app.use('/api/foros', foroRoutes);
     }
 
     // Método para iniciar el servidor
