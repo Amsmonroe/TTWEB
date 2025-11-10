@@ -18,6 +18,7 @@ import {
 import sequelize from '../database/connection';
 import { Paciente } from '../models/paciente';
 import { Psicologo } from '../models/psicologo';
+import ModeracionLog from '../models/foro/moderacion-log';
 
 export class ForoService {
   /**
@@ -473,6 +474,8 @@ export class ForoService {
       id_foro: idForo,
       titulo,
       descripcion,
+      cerrado: false,
+      fijado: false
     });
 
     return {
@@ -486,8 +489,8 @@ export class ForoService {
   }
 
   /**
-   * Listar temas de un foro
-   */
+ * Listar temas de un foro (con soporte para cerrados y fijados)
+ */
   async listarTemas(
     idForo: number,
     page: number = 1,
@@ -497,30 +500,42 @@ export class ForoService {
 
     const { count, rows } = await Tema.findAndCountAll({
       where: { id_foro: idForo },
-      order: [['fecha_creacion', 'DESC']],
+      // ✅ FASE 3: Ordenar por fijados primero, luego por fecha
+      order: [
+        ['fijado', 'DESC'],
+        ['fecha_creacion', 'DESC'],
+      ],
       limit,
       offset,
     });
 
     const temasConInfo = await Promise.all(
-      rows.map(async (tema) => {
+      rows.map(async (tema: Tema) => {
         const totalMensajes = await MensajeForo.count({
-          where: { id_tema: tema.id_tema },
+          where: { 
+            id_tema: tema.id_tema,
+            eliminado: false  // ✅ No contar mensajes eliminados
+          },
         });
 
         const ultimoMensaje = await MensajeForo.findOne({
-          where: { id_tema: tema.id_tema },
+          where: { 
+            id_tema: tema.id_tema,
+            eliminado: false  // ✅ No mostrar mensajes eliminados
+          },
           order: [['fecha_envio', 'DESC']],
           include: [
             {
-              model: sequelize.models.psicologo,
+              model: Psicologo,
               as: 'psicologo',
-              attributes: ['nombre', 'apellidoPaterno'],
+              attributes: ['id_psicologo', 'nombre', 'apellidoPaterno'],
+              required: false,
             },
             {
-              model: sequelize.models.paciente,
+              model: Paciente,
               as: 'paciente',
-              attributes: ['nombre', 'apellido_Paterno'],
+              attributes: ['id_paciente', 'nombre', 'apellido_paterno'],
+              required: false,
             },
           ],
         });
@@ -531,12 +546,14 @@ export class ForoService {
             ultimoMensaje.tipo_usuario === 'psicologo'
               ? (ultimoMensaje as any).psicologo
               : (ultimoMensaje as any).paciente;
-          const apellido = ultimoMensaje.tipo_usuario === 'psicologo' ? autor.apellidoPaterno : autor.apellido_paterno;
+          const apellido =
+            ultimoMensaje.tipo_usuario === 'psicologo'
+              ? autor.apellidoPaterno
+              : autor.apellido_paterno;
           ultimoMensajeInfo = {
             contenido: ultimoMensaje.contenido.substring(0, 100),
             fecha_envio: ultimoMensaje.fecha_envio,
-            //autor: `${autor.nombre} ${autor.apellidoPaterno}`,
-            autor: `${autor.nombre} ${apellido}`, 
+            autor: `${autor.nombre} ${apellido}`,
           };
         }
 
@@ -548,6 +565,10 @@ export class ForoService {
           fecha_creacion: tema.fecha_creacion,
           total_mensajes: totalMensajes,
           ultimo_mensaje: ultimoMensajeInfo,
+          // ✅ FASE 3: Nuevos campos
+          cerrado: tema.cerrado,
+          fijado: tema.fijado,
+          fecha_cierre: tema.fecha_cierre,
         };
       })
     );
@@ -578,6 +599,8 @@ export class ForoService {
       id_tema: idTema,
       tipo_usuario: tipoUsuario,
       contenido,
+      editado: false,
+      eliminado: false,
       ...(tipoUsuario === 'psicologo'
         ? { id_psicologo: idUsuario }
         : { id_paciente: idUsuario }),
@@ -647,7 +670,8 @@ export class ForoService {
   const offset = (page - 1) * limit;
 
   const { count, rows } = await MensajeForo.findAndCountAll({
-    where: { id_tema: idTema },
+    where: {   id_tema: idTema,  eliminado: false  // ✅ FASE 3: No mostrar mensajes eliminados
+    },
     order: [['fecha_envio', 'ASC']],
     limit,
     offset,
