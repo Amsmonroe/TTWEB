@@ -251,16 +251,64 @@ export const actualizarCita = async (req: Request, res: Response) => {
   try {
     const id_cita = Number(req.params.id_cita);
     const body = req.body;
-    if (!id_cita) return res.status(400).json({ msg: "id_cita requerido" });
 
-    const cita = await Cita.findByPk(id_cita);
-    if (!cita) return res.status(404).json({ msg: "Cita no encontrada" });
+    if (!id_cita) {
+      return res.status(400).json({ msg: "id_cita requerido" });
+    }
 
+    // Obtener la cita actual
+    const cita: any = await Cita.findByPk(id_cita);
+
+    if (!cita) {
+      return res.status(404).json({ msg: "Cita no encontrada" });
+    }
+
+    const estadoAnterior = cita.estado;
+
+    // Actualizar cita
     await cita.update(body);
-    res.json({ msg: "Cita actualizada", cita });
+
+    const nuevoEstado = body.estado;
+    const id_paciente = cita.id_paciente;
+
+    // 🔵 Notificación si se CONFIRMÓ la cita
+    if (nuevoEstado === "confirmada" && estadoAnterior !== "confirmada") {
+      try {
+        await fetch("https://api-mobile.midueloapp.com/api/notificaciones/cita-aceptada", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id_paciente }),
+        });
+
+        console.log("📩 Notificación enviada: cita aceptada → paciente", id_paciente);
+      } catch (err) {
+        console.error("❌ Error notificando cita aceptada:", err);
+      }
+    }
+
+    // 🔴 Notificación si se RECHAZÓ la cita
+    if (nuevoEstado === "rechazada" && estadoAnterior !== "rechazada") {
+      try {
+        await fetch("https://api-mobile.midueloapp.com/api/notificaciones/cita-rechazada", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id_paciente }),
+        });
+
+        console.log("📩 Notificación enviada: cita rechazada → paciente", id_paciente);
+      } catch (err) {
+        console.error("❌ Error notificando cita rechazada:", err);
+      }
+    }
+
+    return res.json({
+      msg: "Cita actualizada",
+      cita,
+    });
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({ msg: "Error actualizando cita", error });
+    return res.status(500).json({ msg: "Error actualizando cita", error });
   }
 };
 
