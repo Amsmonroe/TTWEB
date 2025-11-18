@@ -246,78 +246,23 @@ export const crearCita = async (req: Request, res: Response) => {
     });
   }
 };
-const URL_NOTIFICACIONES = "https://api-mobile.midueloapp.com/api/notificaciones";
 
 export const actualizarCita = async (req: Request, res: Response) => {
   try {
     const id_cita = Number(req.params.id_cita);
     const body = req.body;
+    if (!id_cita) return res.status(400).json({ msg: "id_cita requerido" });
 
-    if (!id_cita) {
-      return res.status(400).json({ msg: "id_cita requerido" });
-    }
+    const cita = await Cita.findByPk(id_cita);
+    if (!cita) return res.status(404).json({ msg: "Cita no encontrada" });
 
-    // Obtener la cita actual
-    const cita: any = await Cita.findByPk(id_cita);
-
-    if (!cita) {
-      return res.status(404).json({ msg: "Cita no encontrada" });
-    }
-
-    const estadoAnterior = cita.estado;
-
-    // Actualizar la cita
     await cita.update(body);
-    await cita.reload(); // 🔥 MUY IMPORTANTE
-
-    const nuevoEstado = cita.estado;
-    const id_paciente = cita.id_paciente;
-
-    /* ======================================================
-       🔵 Notificación si la cita fue CONFIRMADA
-    ====================================================== */
-    if (nuevoEstado === "confirmada" && estadoAnterior !== "confirmada") {
-      try {
-        await fetch(`${URL_NOTIFICACIONES}/cita-aceptada`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_paciente }),
-        });
-
-        console.log("📩 Notificación enviada: cita aceptada → paciente", id_paciente);
-      } catch (err) {
-        console.error("❌ Error notificando cita aceptada:", err);
-      }
-    }
-
-    /* ======================================================
-       🔴 Notificación si la cita fue RECHAZADA
-    ====================================================== */
-    if (nuevoEstado === "rechazada" && estadoAnterior !== "rechazada") {
-      try {
-        await fetch(`${URL_NOTIFICACIONES}/cita-rechazada`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_paciente }),
-        });
-
-        console.log("📩 Notificación enviada: cita rechazada → paciente", id_paciente);
-      } catch (err) {
-        console.error("❌ Error notificando cita rechazada:", err);
-      }
-    }
-
-    return res.json({
-      msg: "Cita actualizada",
-      cita,
-    });
-
+    res.json({ msg: "Cita actualizada", cita });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ msg: "Error actualizando cita", error });
+    res.status(500).json({ msg: "Error actualizando cita", error });
   }
 };
-
 
 export const eliminarCita = async (req: Request, res: Response) => {
   try {
