@@ -246,6 +246,7 @@ export const crearCita = async (req: Request, res: Response) => {
     });
   }
 };
+const URL_NOTIFICACIONES = "https://api-mobile.midueloapp.com/api/notificaciones";
 
 export const actualizarCita = async (req: Request, res: Response) => {
   try {
@@ -265,16 +266,19 @@ export const actualizarCita = async (req: Request, res: Response) => {
 
     const estadoAnterior = cita.estado;
 
-    // Actualizar cita
+    // Actualizar la cita
     await cita.update(body);
+    await cita.reload(); // 🔥 MUY IMPORTANTE
 
-    const nuevoEstado = body.estado;
+    const nuevoEstado = cita.estado;
     const id_paciente = cita.id_paciente;
 
-    // 🔵 Notificación si se CONFIRMÓ la cita
+    /* ======================================================
+       🔵 Notificación si la cita fue CONFIRMADA
+    ====================================================== */
     if (nuevoEstado === "confirmada" && estadoAnterior !== "confirmada") {
       try {
-        await fetch("https://api-mobile.midueloapp.com/api/notificaciones/cita-aceptada", {
+        await fetch(`${URL_NOTIFICACIONES}/cita-aceptada`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id_paciente }),
@@ -286,10 +290,12 @@ export const actualizarCita = async (req: Request, res: Response) => {
       }
     }
 
-    // 🔴 Notificación si se RECHAZÓ la cita
+    /* ======================================================
+       🔴 Notificación si la cita fue RECHAZADA
+    ====================================================== */
     if (nuevoEstado === "rechazada" && estadoAnterior !== "rechazada") {
       try {
-        await fetch("https://api-mobile.midueloapp.com/api/notificaciones/cita-rechazada", {
+        await fetch(`${URL_NOTIFICACIONES}/cita-rechazada`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id_paciente }),
@@ -311,6 +317,7 @@ export const actualizarCita = async (req: Request, res: Response) => {
     return res.status(500).json({ msg: "Error actualizando cita", error });
   }
 };
+
 
 export const eliminarCita = async (req: Request, res: Response) => {
   try {
