@@ -6,6 +6,9 @@ import { Psicologo } from '../models/psicologo';
 import { Token } from '../models/token';
 import emailService from '../services/email.service';
 import { Op } from 'sequelize';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
 
 // Función auxiliar para validar edad (18-90 años)
 const validarEdad = (fechaNacimiento: string): boolean => {
@@ -797,5 +800,190 @@ export const cambiarContrasena = async (req: Request, res: Response): Promise<vo
     res.status(500).json({ 
       msg: 'Error interno del servidor' 
     });
+  }
+};
+
+/**
+ * POST /api/psicologo/subir-foto-perfil
+ * Subir foto de perfil del psicólogo
+ */
+export const subirFotoPerfil = async (req: Request, res: Response) => {
+  try {
+    const id_psicologo = (req as any).user?.id_psicologo;
+
+    if (!id_psicologo) {
+      return res.status(401).json({ msg: "No autorizado" });
+    }
+
+    // Verificar que se subió un archivo
+    if (!req.file) {
+      return res.status(400).json({ msg: "No se proporcionó ningún archivo" });
+    }
+
+    const nombreArchivo = req.file.filename;
+    
+    // Actualizar en la base de datos
+    const psicologo = await Psicologo.findByPk(id_psicologo);
+    
+    if (!psicologo) {
+      // Eliminar el archivo subido si el psicólogo no existe
+      const homeDir = os.homedir();
+      const filePath = path.join(homeDir, 'ServerApp', 'server', 'uploads', nombreArchivo);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      return res.status(404).json({ msg: "Psicólogo no encontrado" });
+    }
+
+    
+    // Eliminar foto anterior si existe
+    const fotoAnterior = (psicologo as any).foto_perfil;
+    if (fotoAnterior && !fotoAnterior.startsWith('http')) {
+      const homeDir = os.homedir();
+      const oldFilePath = path.join(homeDir, 'ServerApp', 'server', 'uploads', fotoAnterior);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+        console.log('🗑️ Foto anterior eliminada:', oldFilePath);
+      }
+    }
+
+    // Actualizar con el nuevo nombre de archivo
+    await psicologo.update({ foto_perfil: nombreArchivo });
+
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://api.midueloapp.com'
+      : `http://localhost:${process.env.PORT || '3017'}`;
+
+    res.json({
+      msg: "Foto de perfil actualizada exitosamente",
+      foto_url: `${baseUrl}/uploads/${nombreArchivo}`
+    });
+
+  } catch (error) {
+    console.error("Error al subir foto de perfil:", error);
+    
+    // Eliminar archivo si hubo error
+    if (req.file) {
+      const filePath = path.join(__dirname, '../../uploads', req.file.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+    
+    res.status(500).json({ msg: "Error al subir foto de perfil" });
+  }
+};
+
+/**
+ * DELETE /api/psicologo/eliminar-foto-perfil
+ * Eliminar foto de perfil del psicólogo
+ */
+export const eliminarFotoPerfil = async (req: Request, res: Response) => {
+  try {
+    const id_psicologo = (req as any).user?.id_psicologo;
+
+    if (!id_psicologo) {
+      return res.status(401).json({ msg: "No autorizado" });
+    }
+
+    const psicologo = await Psicologo.findByPk(id_psicologo);
+    
+    if (!psicologo) {
+      return res.status(404).json({ msg: "Psicólogo no encontrado" });
+    }
+
+    const fotoActual = (psicologo as any).foto_perfil;
+    
+    // Eliminar archivo físico si existe
+    if (fotoActual && !fotoActual.startsWith('http')) {
+      const homeDir = os.homedir();
+      const filePath = path.join(homeDir, 'ServerApp', 'server', 'uploads', fotoActual);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log('🗑️ Foto eliminada:', filePath);
+      }
+    }
+
+    // Actualizar base de datos
+    await psicologo.update({ foto_perfil: null });
+
+    res.json({ msg: "Foto de perfil eliminada exitosamente" });
+
+  } catch (error) {
+    console.error("Error al eliminar foto de perfil:", error);
+    res.status(500).json({ msg: "Error al eliminar foto de perfil" });
+  }
+
+
+
+};
+
+/**
+ * GET /api/psicologo/perfil
+ * Obtener perfil completo del psicólogo desde la base de datos
+ */
+export const obtenerPerfil = async (req: Request, res: Response) => {
+  try {
+    const id_psicologo = (req as any).user?.id_psicologo;
+
+    if (!id_psicologo) {
+      return res.status(401).json({ msg: "No autorizado" });
+    }
+
+    const psicologo = await Psicologo.findByPk(id_psicologo, {
+      attributes: [
+        'id_psicologo',
+        'nombre',
+        'apellidoPaterno',
+        'apellidoMaterno',
+        'correo',
+        'telefono',
+        'especialidad',
+        'cedula',
+        'cedula_validada',
+        'direccion_consultorio',
+        'codigo_vinculacion',
+        'rol_admin',
+        'foto_perfil',  // ⭐ INCLUIR FOTO
+        'createdAt',
+        'updatedAt'
+      ]
+    });
+
+    if (!psicologo) {
+      return res.status(404).json({ msg: "Psicólogo no encontrado" });
+    }
+
+    // Construir URL completa si es necesario
+    let fotoUrl = (psicologo as any).foto_perfil;
+    if (fotoUrl && !fotoUrl.startsWith('http')) {
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://api.midueloapp.com'
+        : `http://localhost:${process.env.PORT || '3017'}`;
+      fotoUrl = `${baseUrl}/uploads/${fotoUrl}`;
+    }
+
+    res.json({
+      id_psicologo: (psicologo as any).id_psicologo,
+      nombre: (psicologo as any).nombre,
+      apellido: (psicologo as any).apellidoPaterno,
+      apellidoPaterno: (psicologo as any).apellidoPaterno,
+      apellidoMaterno: (psicologo as any).apellidoMaterno,
+      correo: (psicologo as any).correo,
+      telefono: (psicologo as any).telefono,
+      especialidad: (psicologo as any).especialidad,
+      cedula: (psicologo as any).cedula,
+      cedula_validada: (psicologo as any).cedula_validada,
+      direccion_consultorio: (psicologo as any).direccion_consultorio,
+      codigoVinculacion: (psicologo as any).codigo_vinculacion,
+      rol_admin: (psicologo as any).rol_admin,
+      foto_perfil: fotoUrl,  // ⭐ URL COMPLETA
+      createdAt: (psicologo as any).createdAt,
+      updatedAt: (psicologo as any).updatedAt
+    });
+
+  } catch (error) {
+    console.error("Error al obtener perfil:", error);
+    res.status(500).json({ msg: "Error al obtener perfil" });
   }
 };

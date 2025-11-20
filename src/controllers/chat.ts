@@ -232,12 +232,26 @@ export const getMensajes = async (req: AuthRequest, res: Response) => {
       type: QueryTypes.SELECT
     });
 
+    // // DESCIFRAR MENSAJES ANTES DE ENVIARLOS AL CLIENTE
+    // const mensajesDescifrados = decryptMessages(mensajesCifrados as any[]);
+    
+    // console.log(`Se descifraron ${mensajesDescifrados.length} mensajes del chat ${id_chat}`);
+    
+    // res.json(mensajesDescifrados);
     // DESCIFRAR MENSAJES ANTES DE ENVIARLOS AL CLIENTE
-    const mensajesDescifrados = decryptMessages(mensajesCifrados as any[]);
-    
+const mensajesDescifrados = decryptMessages(mensajesCifrados as any[]);
+
+    // ✅ CONVERTIR fecha_envio a string para evitar conversión UTC
+    const mensajesConFechaString = mensajesDescifrados.map(mensaje => ({
+      ...mensaje,
+      fecha_envio: mensaje.fecha_envio 
+        ? new Date(mensaje.fecha_envio).toISOString().replace('T', ' ').substring(0, 19)
+        : null
+    }));
+
     console.log(`Se descifraron ${mensajesDescifrados.length} mensajes del chat ${id_chat}`);
-    
-    res.json(mensajesDescifrados);
+
+    res.json(mensajesConFechaString);
 
   } catch (error: any) {
     console.error(' Error al obtener mensajes:', error);
@@ -312,7 +326,7 @@ export const getMensajes = async (req: AuthRequest, res: Response) => {
 
       const resultado = await sequelize.query(`
         INSERT INTO mensaje (id_chat, remitente, contenido, fecha_envio, leido) 
-        VALUES (?, ?, ?, NOW(), ?)
+        VALUES (?, ?, ?, CONVERT_TZ(NOW(), @@session.time_zone, '-06:00'), ?)
       `, {
         replacements: [id_chat, remitente, contenidoCifrado, leido],
         type: QueryTypes.INSERT
