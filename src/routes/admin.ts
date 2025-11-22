@@ -6,8 +6,7 @@ import { registroAdmin, verificarAdmin, getAllPsicologos,
         validarCedulaManual,
         getAllPacientesAdmin,
         reasignarPaciente,
-        cambiarEstadoPaciente,
-        eliminarPaciente
+        cambiarEstadoPaciente
 } from "../controllers/admin";
 import validarToken from "./validarToken";
 import validarAdmin from "./validarAdmin";
@@ -41,6 +40,4 @@ router.put("/api/admin/pacientes/:id_paciente/status", validarAdmin, cambiarEsta
 router.post("/api/admin/subir-foto-perfil", validarAdmin, uploadFotoPerfil.single('foto'), subirFotoPerfil);
 router.delete("/api/admin/eliminar-foto-perfil", validarAdmin, eliminarFotoPerfil);
 router.get("/api/admin/perfil", validarAdmin, obtenerPerfil);
-
-router.delete("/api/admin/pacientes/:id_paciente", validarAdmin, eliminarPaciente);
 export default router;
