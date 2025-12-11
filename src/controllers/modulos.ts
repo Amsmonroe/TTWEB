@@ -57,7 +57,7 @@ function formatearEvidenciaPaciente(actividadPaciente: any, actividad: any) {
   if (actividadPaciente.evidencia_foto) {
     evidencias.push({
       id_evidencia: `foto_${actividadPaciente.id_actividad_paciente}`,
-      archivo_url: limpiarUrlEvidencia(actividadPaciente.evidencia_foto),
+      archivo_url: limpiarUrlEvidencia(actividadPaciente.evidencia_foto), // ✅ Esta función debe existir
       tipo_archivo: 'imagen',
       comentario: null,
       fecha_subida: actividadPaciente.fecha_realizacion,
@@ -85,7 +85,6 @@ function formatearEvidenciaPaciente(actividadPaciente: any, actividad: any) {
   
   return evidencias;
 }
-
 /**
  * GET /api/psicologo/pacientes/:id_paciente/modulos
  * Obtener todos los módulos con su progreso para un paciente
